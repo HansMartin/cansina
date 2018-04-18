@@ -21,6 +21,8 @@ class Task:
         self.response_type = ""
         self.valid = True
         self.content_detected = False
+        self.num_errors = 0
+        self.error_occured = False
 
     def set_payload_length(self, length):
         self.payload_length = length
@@ -71,7 +73,8 @@ class Task:
                 self.response_code,
                 self.response_size,
                 self.response_time,
-                self.location)
+                self.location,
+                self.num_errors)
 
     def get_complete_target(self):
         if '***' in self.target:

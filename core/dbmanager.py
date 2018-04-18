@@ -19,6 +19,7 @@ class DBManager():
 
         # Check for self.database_path, create dirs and database if they don't exists
         self.database_path = OUTPUT_DIR + database_name + SUFIX
+        print(self.database_path)
         if not os.path.isfile(self.database_path):
             if not os.path.isdir(OUTPUT_DIR):
                 os.mkdir(OUTPUT_DIR)
@@ -36,7 +37,8 @@ class DBManager():
                                 response_size INTEGER,\
                                 response_time INTEGER,\
                                 location TEXT, \
-                                t_stamp INTEGER);")
+                                t_stamp INTEGER, \
+                                num_errors INTEGER);")
                 connection.commit()
                 connection.close()
 
@@ -70,7 +72,7 @@ class DBManager():
         connection.text_factory = str
         # Check if the record already exists
         record = {"url": task.target, "resource": task.resource, "extension": task.extension,
-                  "response_code": task.response_code}
+                "response_code": task.response_code, "num_errors": task.num_errors}
         try:
             cursor.execute("SELECT * FROM requests WHERE \
                             url=:url AND \
@@ -83,6 +85,6 @@ class DBManager():
         if not cursor.fetchone():
             if not task.response_code == "404":
                 if task.is_valid():
-                    cursor.execute("INSERT INTO requests VALUES (?,?,?,?,?,?,?,?,?,?)", task.values() + (time.time(),))
+                    cursor.execute("INSERT INTO requests VALUES (?,?,?,?,?,?,?,?,?,?,?)", task.values() + (time.time(),))
                     connection.commit()
         connection.close()

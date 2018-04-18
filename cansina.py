@@ -172,7 +172,9 @@ parser.add_argument('--show-type', dest="show_content_type",
 parser.add_argument('--no-follow', dest="allow_redirects",
                             help="Do not follow redirections", default=True, action="store_false")
 parser.add_argument('--line', dest='continue_line', type=int,
-                    help="Continue payload in line <n>", default=0)
+             help="Continue payload in line <n>", default=0)
+parser.add_argument('--show-errors', dest='show_errors',
+                    help="Shows Timeout & similar Errors", default=False, action="store_true")
 
 args = parser.parse_args()
 
@@ -328,7 +330,7 @@ Visitor.set_size_discriminator(size_discriminator)
 Visitor.set_user_agent(user_agent)
 Visitor.set_persist(persist)
 Visitor.allow_redirects(args.allow_redirects)
-
+Visitor.set_errormessages(args.show_errors) #TODO: dynamic change via command line Option
 try:
     cookie_jar = _make_cookie_jar(cookies)
     Visitor.set_cookies(cookie_jar)

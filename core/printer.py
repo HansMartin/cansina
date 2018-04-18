@@ -46,7 +46,8 @@ class ETAQueue:
         mseconds_in_a_hour = 3600000
         mseconds_in_a_minute = 60000
         mseconds_in_a_second = 1000
-
+        if None in self.times:
+            self.times = [0 for time in self.times]
         median = sum(self.times)//len(self.times)
         mseconds = self.pending_requests * median
 
@@ -78,48 +79,25 @@ class Console:
 
     @staticmethod
     def header():
-        header = os.linesep + "cod |    size    |  line  | time |" \
-            + os.linesep + "----------------------------------" + os.linesep
+        header = os.linesep + "cod |    size    |  line  | time | err. |" \
+            + os.linesep +    "-----------------------------------------" + os.linesep
         sys.stdout.write(header)
 
     @staticmethod
     def body(task):
+
+        color = MAGENTA
+        error_format = color + "{1: ^3} | {2: >10} | {3: >6} | {4: >4} | {8: >4} | {7} [{0: >2}%] - {5: ^9} - {6}" + ENDC
+
         percentage = int(task.number * 100 / task.get_payload_length())
+
         target = task.get_complete_target()
         target = urlparse.urlsplit(target).path
-
-        if task.location:
-            target = target + " -> " + task.location
-        if len(target) > COLUMNS - Console.MIN_COLUMN_SIZE:
-            target = target[:abs(COLUMNS - Console.MIN_COLUMN_SIZE)]
-
-        # If a task is valid means that is should be printed, so a proper
-        # linesep will be printed
-        linesep = ""
-        if task.is_valid():
-            linesep = os.linesep
-        elif os.name == 'nt':
-            return
-
-        color = ""
-        if task.response_code == "200":
-            color = GREEN
-        if task.response_code == "401" or task.response_code == "403":
-            color = RED
-        if task.response_code == "301" or task.response_code == "302":
-            color = LBLUE
-        if task.response_code.startswith('5') or task.response_code == '400':
-            color = YELLOW
-        if task.content_detected:
-            color = MAGENTA
-
-        to_format = color + "{1: ^3} | {2: >10} | {3: >6} | {4: >4} | {7} [{0: >2}%] - {5: ^9} - {6}" + ENDC
-        to_format_without_progress = color + "{0: ^3} | {1: >10} | {2: >6} | {3: >4} | {5:^} {4}" + ENDC
-
         if sys.version_info[0] == 3:
             t_encode = target
         else:
             t_encode = target.encode('utf-8')
+
 
         # User wants to see full path
         if Console.show_full_path:
@@ -141,12 +119,61 @@ class Console:
         else:
             content_type = ""
 
+        # If a task is valid means that is should be printed, so a proper
+        # linesep will be printed
+        linesep = ""
+        if task.is_valid():
+            linesep = os.linesep
+        elif os.name == 'nt':
+            return
+
+        if task.location:
+            target = target + " -> " + task.location
+        if len(target) > COLUMNS - Console.MIN_COLUMN_SIZE:
+            target = target[:abs(COLUMNS - Console.MIN_COLUMN_SIZE)]
+
+
+
+        if task.error_occured:
+            linesep = ""
+            to_console = error_format.format(percentage, 0,
+                                          0, task.number,
+                                          0,
+                                          Console.eta,
+                                          t_encode, content_type, task.num_errors)
+            sys.stdout.write(to_console[:COLUMNS-2] + linesep)
+            sys.stdout.flush()
+            sys.stdout.write('\r')
+            if not os.name == 'nt':
+                sys.stdout.write("\x1b[0K")
+            return
+
+
+
+
+        color = ""
+        if task.response_code == "200":
+            color = GREEN
+        if task.response_code == "401" or task.response_code == "403":
+            color = RED
+        if task.response_code == "301" or task.response_code == "302":
+            color = LBLUE
+        if task.response_code.startswith('5') or task.response_code == '400':
+            color = YELLOW
+        if task.content_detected:
+            color = MAGENTA
+
+        to_format = color + "{1: ^3} | {2: >10} | {3: >6} | {4: >4} | {8: >4} | {7} [{0: >2}%] - {5: ^9} - {6}" + ENDC
+        to_format_without_progress = color + "{0: ^3} | {1: >10} | {2: >6} | {3: >4} | {4: >4} | {5:^} {4}" + ENDC
+
+
         # if an entry is about to be log, remove percentage and eta time
         if color:
             to_console = to_format_without_progress.format(task.response_code,
                                                     task.response_size,
                                                     task.number,
                                                     int(task.response_time),
+                                                    task.num_errors,
                                                     t_encode, content_type)
         # print with progress
         else:
@@ -154,7 +181,7 @@ class Console:
                                           task.response_size, task.number,
                                           int(task.response_time),
                                           Console.eta,
-                                          t_encode, content_type)
+                                          t_encode, content_type, task.num_errors)
 
         sys.stdout.write(to_console[:COLUMNS-2] + linesep)
         sys.stdout.flush()
@@ -162,3 +189,4 @@ class Console:
 
         if not os.name == 'nt':
             sys.stdout.write("\x1b[0K")
+

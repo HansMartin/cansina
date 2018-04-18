@@ -24,6 +24,8 @@ class Visitor(threading.Thread):
     cookies = None
     persist = False
     allow_redirects = False
+    show_errors = False
+    num_errors = 0
 
     @staticmethod
     def allow_redirects(pref):
@@ -75,6 +77,10 @@ class Visitor(threading.Thread):
     @staticmethod
     def set_authentication(auth):
         Visitor.auth = tuple(auth.split(':')) if auth else auth
+
+    @staticmethod
+    def set_errormessages(show_errors):
+        Visitor.show_errors = show_errors
 
     @staticmethod
     def set_persist(persist):
@@ -216,9 +222,23 @@ class Visitor(threading.Thread):
         except (requests.ConnectionError, requests.Timeout) as e:
             # sys.stderr.write("Connection (or/and) timeout error" + os.linesep)
             # TODO log to a file instead of screen
-            print ("[!] Timeout/Connection error")
-            print (e)
+            self.num_errors += 1
+            task.num_errors = self.num_errors
+            #self.results.put(task) # debuugerino
+            task.error_occured = True
+            self.results.put(task) # debuugerino
+
+            if self.show_errors:
+                print ("[!] Timeout/Connection error")
+                print (e)
+
 
         except Exception as e:
-            print ("[!] General exception while visiting")
-            print (e)
+            self.num_errors += 1
+            task.num_errors = self.num_errors
+            task.error_occured = True
+            self.results.put(task) # debuugerino
+
+            if self.show_errors:
+                print ("[!] General exception while visiting")
+                print (e)
